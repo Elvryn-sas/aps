@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Admin — APS Portal</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<!-- body hidden until auth confirmed — prevents flash of content -->
+<style>
+body{visibility:hidden}
+/* ===== PAGE ANIMATIONS ===== */
+@keyframes fadeSlideIn {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes cardPop {
+  from { opacity:0; transform:scale(0.96) translateY(10px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes navbarSlide {
+  from { opacity:0; transform:translateY(-100%); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes sidebarSlide {
+  from { opacity:0; transform:translateX(-32px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes statCountUp {
+  from { opacity:0; transform:translateY(12px) scale(0.9); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+.navbar { animation: navbarSlide 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+.sidebar { animation: sidebarSlide 0.55s 0.1s cubic-bezier(0.22,1,0.36,1) both; }
+.main-content { animation: fadeSlideIn 0.6s 0.15s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card { animation: cardPop 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card:nth-child(1) { animation-delay:0.18s; }
+.stat-card:nth-child(2) { animation-delay:0.25s; }
+.stat-card:nth-child(3) { animation-delay:0.32s; }
+.stat-card:nth-child(4) { animation-delay:0.39s; }
+.stat-card .val { animation: statCountUp 0.5s 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+.card { animation: cardPop 0.5s 0.2s cubic-bezier(0.22,1,0.36,1) both; }
+.modal { animation: cardPop 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.sidebar-item { transition: background 0.2s, color 0.2s, transform 0.15s, padding-left 0.2s; }
+.sidebar-item:hover { padding-left: 28px; }
+.sidebar-item.active { padding-left: 28px; }
+.btn { transition: transform 0.15s, box-shadow 0.18s, opacity 0.15s, background 0.2s; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(47,122,79,0.2); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.table-wrap { animation: fadeSlideIn 0.5s 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+tbody tr { transition: background 0.15s, transform 0.12s; }
+tbody tr:hover { transform: translateX(2px); }
+.badge { transition: transform 0.15s; }
+.badge:hover { transform: scale(1.06); }
+.upload-zone { transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s; }
+.upload-zone:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(47,122,79,0.15); }
+/* Section transition */
+section { animation: fadeSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+.form-group input:focus, .form-group select:focus {
+  transform: none;
+  box-shadow: 0 0 0 3px rgba(47,122,79,0.15);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo"><span>APS</span> Admin Panel</div>
+  <div class="nav-right">
+    <span class="user-name" id="navUser"></span>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-menu">
+      <div class="sidebar-section">Main</div>
+      <div class="sidebar-item active" id="nav-dashboard" onclick="showSection('dashboard')">
+        <span class="icon"></span> Dashboard
+      </div>
+      <div class="sidebar-section">Management</div>
+      <div class="sidebar-item" id="nav-classes" onclick="showSection('classes')">
+        <span class="icon"></span> Classes
+      </div>
+      <div class="sidebar-item" id="nav-teachers" onclick="showSection('teachers')">
+        <span class="icon"></span> Teachers
+      </div>
+      <div class="sidebar-item" id="nav-students" onclick="showSection('students')">
+        <span class="icon"></span> Students
+      </div>
+      <div class="sidebar-section">Results</div>
+      <div class="sidebar-item" id="nav-results" onclick="showSection('results')">
+        <span class="icon"></span> Result Cards
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard">
+      <div class="page-header"><h2>Dashboard</h2></div>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="val" id="stat-classes">—</div><div class="lbl">Classes</div></div>
+        <div class="stat-card"><div class="val" id="stat-teachers">—</div><div class="lbl">Teachers</div></div>
+        <div class="stat-card"><div class="val" id="stat-students">—</div><div class="lbl">Students</div></div>
+        <div class="stat-card"><div class="val" id="stat-results">—</div><div class="lbl">Results Generated</div></div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--primary);margin-bottom:12px">Quick Actions</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="showSection('classes')">Add Class</button>
+          <button class="btn btn-accent"  onclick="showSection('teachers')">Add Teacher</button>
+          <button class="btn btn-ghost"   onclick="showSection('results')">View Results</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLASSES -->
+    <section id="sec-classes" class="hidden">
+      <div class="page-header">
+        <h2>Classes</h2>
+        <button class="btn btn-primary" onclick="openClassModal()">Add Class</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Class Name</th><th>Session</th><th>Teacher</th><th>Students</th><th>Actions</th></tr></thead>
+            <tbody id="classesTbody"><tr><td colspan="5" class="text-center text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEACHERS -->
+    <section id="sec-teachers" class="hidden">
+      <div class="page-header">
+        <h2>Teachers</h2>
+        <button class="btn btn-primary" onclick="openTeacherModal()">Add Teacher</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Assigned Class</th><th>Actions</th></tr></thead>
+            <tbody id="teachersTbody"><tr><td colspan="4" class="text-center text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENTS -->
+    <section id="sec-students" class="hidden">
+      <div class="page-header"><h2>Students</h2></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label>Filter by Class</label>
+          <select id="filterClass" onchange="loadStudentsFiltered()" style="max-width:300px">
+            <option value="">All Classes</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File #</th><th>Name</th><th>Class</th><th>Subject</th></tr></thead>
+            <tbody id="studentsTbody"><tr><td colspan="4" class="text-center text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="sec-results" class="hidden">
+      <div class="page-header"><h2>Result Cards</h2></div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="tab-data-btn" class="btn btn-primary btn-sm" onclick="switchResultTab('data')">📊 Marks Data</button>
+        <button id="tab-saved-btn" class="btn btn-ghost btn-sm" onclick="switchResultTab('saved')">📁 Saved Cards</button>
+      </div>
+
+      <!-- Marks Data Tab -->
+      <div id="tab-data">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0;flex:1;min-width:180px">
+              <label>Filter by Class</label>
+              <select id="filterResultClass" onchange="loadResultsFiltered()" style="max-width:300px">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding-bottom:4px;font-size:.85rem;color:var(--text-muted)">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle"></span>Complete</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#eab308;margin-right:5px;vertical-align:middle"></span>In Progress</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Status</th><th>File #</th><th>Name</th><th>Class</th><th>Subject</th><th>%Age</th><th>Pending</th><th>Term</th><th>Action</th></tr></thead>
+              <tbody id="resultsTbody"><tr><td colspan="9" class="text-center text-muted">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved Cards Tab -->
+      <div id="tab-saved" class="hidden">
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Class</th><th>Student</th><th>Term</th><th>Actions</th></tr></thead>
+              <tbody id="savedCardsTbody"><tr><td colspan="4" class="text-center text-muted">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- CLASS MODAL -->
+<div class="modal-overlay hidden" id="classModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="classModalTitle">Add Class</h3>
+      <button class="modal-close" onclick="closeModal('classModal')">×</button>
+    </div>
+    <div id="classModalAlert" class="alert alert-error hidden"></div>
+    <div class="form-group"><label>Class Name</label><input id="cClassName" placeholder="e.g. F.Sc Part-I A"/></div>
+    <div class="form-group"><label>Session</label><input id="cSession" placeholder="e.g. 2025-26"/></div>
+    <div class="form-group"><label>Strength (total seats)</label><input id="cStrength" type="number" placeholder="e.g. 40"/></div>
+    <input type="hidden" id="cEditId"/>
+    <div id="uploadStudentsSection" class="hidden" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+      <h4 style="margin-bottom:10px;color:var(--primary)">Upload Students (Excel)</h4>
+      <div class="upload-zone" id="studentUploadZone" onclick="document.getElementById('studentFile').click()">
+        <p>Click or drag & drop your Excel file<br/><small>Columns needed: CID (File#), Name, Subject</small></p>
+      </div>
+      <input type="file" id="studentFile" accept=".xlsx,.xls" class="hidden" onchange="handleStudentUpload(this)"/>
+      <div id="uploadPreview" style="margin-top:12px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeModal('classModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveClass()">Save Class</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER MODAL -->
+<div class="modal-overlay hidden" id="teacherModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Teacher</h3>
+      <button class="modal-close" onclick="closeModal('teacherModal')">×</button>
+    </div>
+    <div id="teacherModalAlert" class="alert alert-error hidden"></div>
+    <div class="form-group"><label>Full Name</label><input id="tName" placeholder="Teacher name"/></div>
+    <div class="form-group"><label>Email</label><input type="email" id="tEmail" placeholder="teacher@school.com"/></div>
+    <div class="form-group"><label>Password</label><input type="password" id="tPassword" placeholder="Min 6 characters"/></div>
+    <div class="form-group"><label>Subject</label>
+      <select id="tSubject">
+        <option value="">-- Select Subject --</option>
+        <option>English</option>
+        <option>Urdu</option>
+        <option>Mathematics</option>
+        <option>Physics</option>
+        <option>Chemistry</option>
+        <option>Bio</option>
+        <option>Computer</option>
+        <option>Pakistan Studies</option>
+        <option>Islamiyat</option>
+      </select>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeModal('teacherModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeacher()">Create Teacher</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN CLASS MODAL -->
+<div class="modal-overlay hidden" id="assignClassModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign Classes to Teacher</h3>
+      <button class="modal-close" onclick="closeModal('assignClassModal')">×</button>
+    </div>
+    <div id="assignClassAlert" class="alert alert-error hidden"></div>
+    <p style="margin-bottom:14px;color:var(--text-muted)">Teacher: <strong id="assignTeacherName"></strong></p>
+    <div class="form-group">
+      <label>Select Classes (tick all that apply)</label>
+      <div id="assignClassCheckboxes" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <input type="hidden" id="assignTeacherId"/>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeModal('assignClassModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignClass()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { checkAuth, logout,
+         getClasses, addClass, updateClass, deleteClass,
+         getTeachers, createTeacher, deleteTeacher, assignTeacherClasses,
+         getAllStudents, bulkUploadStudents,
+         getAllResults, getResult } from "../js/api.js";
+
+async function apiSaveCard(payload) {
+  const res = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/save`, {
+    method:'POST', headers:{'Content-Type':'application/json',
+    'Authorization':`Bearer ${sessionStorage.getItem('aps_token')}`},
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+async function apiDeleteCard(path) {
+  const res = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/delete`, {
+    method:'POST', headers:{'Content-Type':'application/json',
+    'Authorization':`Bearer ${sessionStorage.getItem('aps_token')}`},
+    body: JSON.stringify({path})
+  });
+  return res.json();
+}
+async function apiListCards() {
+  const res = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards`, {
+    headers:{'Authorization':`Bearer ${sessionStorage.getItem('aps_token')}`}
+  });
+  return res.json();
+}
+import { buildResultCardHTML } from "../js/resultCard.js?v=1779630655";
+import { SCHOOL_CONFIG } from "../config.js?v=1779630655";
+
+// ── Auth Guard ──────────────────────────────────────────────
+const user = await checkAuth();
+if (!user || user.role !== "admin") {
+  window.location.href = "../index.html";
+} else {
+  document.body.style.visibility = "visible";
+  document.getElementById("navUser").textContent = user.name || user.email;
+  initAdmin();
+}
+
+window.doLogout = async () => { await logout(); window.location.href = "../index.html"; };
+
+// ── State ───────────────────────────────────────────────────
+let classes = [], teachers = [], students = [], results = [];
+
+// ── Init ────────────────────────────────────────────────────
+async function initAdmin() {
+  await Promise.all([loadClasses(), loadTeachers(), loadStudents(), loadResults()]);
+  updateStats();
+  populateClassFilters();
+  renderClasses();
+}
+
+async function loadClasses()  { classes  = await getClasses(); }
+async function loadTeachers() { teachers = await getTeachers(); }
+async function loadStudents() { students = await getAllStudents(); }
+async function loadResults()  { results  = await getAllResults(); }
+
+function updateStats() {
+  document.getElementById("stat-classes").textContent  = classes.length;
+  document.getElementById("stat-teachers").textContent = teachers.length;
+  document.getElementById("stat-students").textContent = students.length;
+  document.getElementById("stat-results").textContent  = new Set(results.map(r=>r.studentId)).size;
+}
+
+function populateClassFilters() {
+  ["filterClass","filterResultClass"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<option value="">All Classes</option>`;
+    classes.forEach(c => el.insertAdjacentHTML("beforeend",`<option value="${c.id}">${c.name}</option>`));
+  });
+}
+
+// ── Section nav ─────────────────────────────────────────────
+window.showSection = (name) => {
+  document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
+  document.querySelectorAll(".sidebar-item").forEach(i => i.classList.remove("active"));
+  document.getElementById("sec-"+name).classList.remove("hidden");
+  document.getElementById("nav-"+name).classList.add("active");
+  if (name === "classes")  renderClasses();
+  if (name === "teachers") renderTeachers();
+  if (name === "students") renderStudents();
+  if (name === "results")  renderResults();
+};
+
+// ── CLASSES ─────────────────────────────────────────────────
+function renderClasses() {
+  const tb = document.getElementById("classesTbody");
+  if (!classes.length) { tb.innerHTML=`<tr><td colspan="5" class="text-center text-muted">No classes yet.</td></tr>`; return; }
+  tb.innerHTML = classes.map(c => {
+    const teacher  = teachers.find(t => (t.classIds||[]).includes(c.id));
+    const stuCount = students.filter(s => s.classId === c.id).length;
+    return `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td>${c.session||""}</td>
+      <td>${teacher ? teacher.name : '<span class="text-muted">Unassigned</span>'}</td>
+      <td>${stuCount}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openClassModal('${c.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="openUploadForClass('${c.id}')">Upload Students</button>
+        <button class="btn btn-danger btn-sm" onclick="delClass('${c.id}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+window.openClassModal = (editId=null) => {
+  document.getElementById("cEditId").value = editId||"";
+  document.getElementById("classModalTitle").textContent = editId ? "Edit Class" : "Add Class";
+  document.getElementById("uploadStudentsSection").classList.add("hidden");
+  document.getElementById("uploadPreview").innerHTML = "";
+  document.getElementById("classModalAlert").classList.add("hidden");
+  if (editId) {
+    const c = classes.find(x => x.id===editId);
+    document.getElementById("cClassName").value = c.name    ||"";
+    document.getElementById("cSession").value   = c.session ||"";
+    document.getElementById("cStrength").value  = c.strength||"";
+  } else {
+    ["cClassName","cSession","cStrength"].forEach(id => document.getElementById(id).value="");
+  }
+  openModal("classModal");
+};
+
+window.openUploadForClass = (classId) => {
+  document.getElementById("cEditId").value    = classId;
+  const c = classes.find(x => x.id===classId);
+  document.getElementById("cClassName").value = c?.name    ||"";
+  document.getElementById("cSession").value   = c?.session ||"";
+  document.getElementById("cStrength").value  = c?.strength||"";
+  document.getElementById("classModalTitle").textContent = "Manage Class";
+  document.getElementById("uploadStudentsSection").classList.remove("hidden");
+  document.getElementById("classModalAlert").classList.add("hidden");
+  openModal("classModal");
+};
+
+window.saveClass = async () => {
+  const editId   = document.getElementById("cEditId").value;
+  const name     = document.getElementById("cClassName").value.trim();
+  const session  = document.getElementById("cSession").value.trim() || SCHOOL_CONFIG.school.session;
+  const strength = document.getElementById("cStrength").value.trim();
+  const alertEl  = document.getElementById("classModalAlert");
+  if (!name) { showAlert(alertEl,"Class name is required."); return; }
+  try {
+    if (editId) {
+      await updateClass(editId,{name,session,strength});
+    } else {
+      const cls = await addClass({name,session,strength});
+      document.getElementById("cEditId").value = cls.id;
+      document.getElementById("uploadStudentsSection").classList.remove("hidden");
+    }
+    await Promise.all([loadClasses(), loadTeachers(), loadStudents()]);
+    renderClasses(); renderTeachers(); updateStats(); populateClassFilters();
+    showAlert(alertEl, editId ? "Class updated!" : "Class created! Now upload students.", false);
+  } catch(e) { showAlert(alertEl, e.message); }
+};
+
+window.delClass = async (id) => {
+  if (!confirm("Delete this class? Students in it will remain.")) return;
+  await deleteClass(id);
+  await loadClasses(); renderClasses(); updateStats();
+};
+
+// ── TEACHERS ─────────────────────────────────────────────────
+function renderTeachers() {
+  const tb = document.getElementById("teachersTbody");
+  if (!teachers.length) { tb.innerHTML=`<tr><td colspan="5" class="text-center text-muted">No teachers yet.</td></tr>`; return; }
+  tb.innerHTML = teachers.map(t => {
+    const assignedClasses = classes.filter(c => (t.classIds||[]).includes(c.id));
+    const classBadges = assignedClasses.length
+      ? assignedClasses.map(c=>`<span class="badge badge-teacher" style="margin:2px">${c.name}</span>`).join("")
+      : '<span class="text-muted">Unassigned</span>';
+    return `<tr>
+      <td><strong>${t.name}</strong></td>
+      <td>${t.email}</td>
+      <td>${t.subject||'<span class="text-muted">—</span>'}</td>
+      <td style="max-width:220px">${classBadges}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="openAssignClassModal('${t.id}','${t.name.replace(/'/g,"\\'")}')">Assign Classes</button>
+        <button class="btn btn-danger btn-sm" onclick="delTeacher('${t.id}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+
+window.openTeacherModal = () => {
+  ["tName","tEmail","tPassword"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("teacherModalAlert").classList.add("hidden");
+  openModal("teacherModal");
+};
+
+window.saveTeacher = async () => {
+  const name     = document.getElementById("tName").value.trim();
+  const email    = document.getElementById("tEmail").value.trim();
+  const password = document.getElementById("tPassword").value;
+  const subject  = document.getElementById("tSubject").value;
+  const alertEl  = document.getElementById("teacherModalAlert");
+  if (!name || !email || !password || !subject) { showAlert(alertEl,"All fields required."); return; }
+  if (password.length < 6)                       { showAlert(alertEl,"Password must be at least 6 characters."); return; }
+  try {
+    await createTeacher(name, email, password, subject);
+    await loadTeachers(); renderTeachers(); updateStats(); populateClassFilters();
+    showAlert(alertEl,"Teacher created successfully!",false);
+    setTimeout(()=>closeModal("teacherModal"),1200);
+  } catch(e) { showAlert(alertEl,e.message); }
+};
+
+window.delTeacher = async (id) => {
+  if (!confirm("Remove teacher record?")) return;
+  await deleteTeacher(id);
+  await loadTeachers(); renderTeachers(); updateStats();
+};
+
+window.openAssignClassModal = (teacherId, teacherName) => {
+  document.getElementById("assignTeacherId").value = teacherId;
+  document.getElementById("assignTeacherName").textContent = teacherName;
+  document.getElementById("assignClassAlert").classList.add("hidden");
+  const teacher = teachers.find(t => t.id === teacherId);
+  const currentClassIds = teacher ? (teacher.classIds || []) : [];
+  const container = document.getElementById("assignClassCheckboxes");
+  if (!classes.length) {
+    container.innerHTML = '<span class="text-muted">No classes available.</span>';
+  } else {
+    container.innerHTML = classes.map(c => {
+      const checked = currentClassIds.includes(c.id) ? "checked" : "";
+      return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background .15s" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
+        <input type="checkbox" value="${c.id}" ${checked} style="accent-color:var(--primary);width:16px;height:16px"/>
+        <span>${c.name}${c.session ? ' <small class="text-muted">(' + c.session + ')</small>' : ''}</span>
+      </label>`;
+    }).join("");
+  }
+  openModal("assignClassModal");
+};
+
+window.saveAssignClass = async () => {
+  const teacherId = document.getElementById("assignTeacherId").value;
+  const alertEl   = document.getElementById("assignClassAlert");
+  const checkboxes = document.querySelectorAll("#assignClassCheckboxes input[type=checkbox]");
+  const selectedIds = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+  try {
+    await assignTeacherClasses(teacherId, selectedIds);
+    await loadTeachers();
+    renderTeachers();
+    showAlert(alertEl, `${selectedIds.length} class(es) assigned successfully!`, false);
+    setTimeout(() => closeModal("assignClassModal"), 1200);
+  } catch(e) { showAlert(alertEl, e.message); }
+};
+
+// ── STUDENTS ─────────────────────────────────────────────────
+function renderStudents(list=students) {
+  const tb = document.getElementById("studentsTbody");
+  if (!list.length) { tb.innerHTML=`<tr><td colspan="4" class="text-center text-muted">No students.</td></tr>`; return; }
+  tb.innerHTML = list.map(s => {
+    const cls = classes.find(c => c.id===s.classId);
+    return `<tr>
+      <td>${s.cid}</td>
+      <td>${s.name}</td>
+      <td>${cls?.name||"—"}</td>
+      <td><span class="badge badge-${s.subject}">${s.subject==="bio"?"Biology":"Computer"}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+window.loadStudentsFiltered = () => {
+  const classId = document.getElementById("filterClass").value;
+  renderStudents(classId ? students.filter(s=>s.classId===classId) : students);
+};
+
+// ── STUDENT EXCEL UPLOAD ─────────────────────────────────────
+window.handleStudentUpload = async (input) => {
+  const file    = input.files[0];
+  const classId = document.getElementById("cEditId").value;
+  if (!file) return;
+  if (!classId) { alert("Save the class first before uploading students."); return; }
+  const preview = document.getElementById("uploadPreview");
+  preview.innerHTML = `<div class="alert alert-info">Uploading and parsing Excel on your PC…</div>`;
+  try {
+    const result = await bulkUploadStudents(file, classId);
+    preview.innerHTML = `<div class="alert alert-success">✅ ${result.imported} students imported and saved on your PC!</div>`;
+    await loadStudents(); updateStats();
+  } catch(e) {
+    preview.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+  }
+  input.value = "";
+};
+
+// drag-drop
+document.getElementById("studentUploadZone").addEventListener("dragover",  e=>{e.preventDefault();e.currentTarget.classList.add("drag-over");});
+document.getElementById("studentUploadZone").addEventListener("dragleave", e=>e.currentTarget.classList.remove("drag-over"));
+document.getElementById("studentUploadZone").addEventListener("drop", e=>{
+  e.preventDefault(); e.currentTarget.classList.remove("drag-over");
+  const input = document.getElementById("studentFile");
+  const dt    = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]); input.files=dt.files;
+  window.handleStudentUpload(input);
+});
+
+// ── RESULTS ──────────────────────────────────────────────────
+// Build one row per student (latest/most complete record)
+function getLatestResultPerStudent(list) {
+  const map = new Map();
+  for (const r of list) {
+    const key = r.studentId;
+    const prev = map.get(key);
+    if (!prev) { map.set(key, r); continue; }
+    // Prefer complete over incomplete; then prefer lower pendingSubjects count; then newer
+    const rPending = (r.pendingSubjects||[]).length;
+    const pPending = (prev.pendingSubjects||[]).length;
+    if (r.complete && !prev.complete) { map.set(key, r); continue; }
+    if (!r.complete && prev.complete) continue;
+    if (rPending < pPending) { map.set(key, r); continue; }
+    if (rPending > pPending) continue;
+    // same completion — take whichever term is more recent
+    const termOrder = {"Term 1":1,"Term 2":2,"Final":3};
+    if ((termOrder[r.term]||0) >= (termOrder[prev.term]||0)) map.set(key, r);
+  }
+  return Array.from(map.values());
+}
+
+function renderResults(list=results) {
+  const tb = document.getElementById("resultsTbody");
+  const deduplicated = getLatestResultPerStudent(list);
+  if (!deduplicated.length) { tb.innerHTML=`<tr><td colspan="8" class="text-center text-muted">No results yet.</td></tr>`; return; }
+  tb.innerHTML = deduplicated.map(r => {
+    const s   = students.find(x=>x.id===r.studentId);
+    const cls = classes.find(c=>c.id===r.classId);
+    const isComplete = r.complete === true;
+    const dot = isComplete
+      ? `<span title="Complete" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 2px #dcfce7"></span>`
+      : `<span title="In Progress" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#eab308;box-shadow:0 0 0 2px #fef9c3"></span>`;
+    const pending = (r.pendingSubjects||[]);
+    const pendingText = pending.length ? pending.join(", ") : '<span style="color:#22c55e">All filled ✓</span>';
+    return `<tr>
+      <td style="text-align:center">${dot}</td>
+      <td>${s?.cid||"—"}</td>
+      <td>${s?.name||r.studentName||"—"}</td>
+      <td>${cls?.name||r.className||"—"}</td>
+      <td><span class="badge badge-${s?.subject||""}">${s?.subject==="bio"?"Biology":"Computer"}</span></td>
+      <td><strong>${r.overallPct||"—"}%</strong></td>
+      <td style="font-size:.82rem;color:var(--text-muted);max-width:180px">${pendingText}</td>
+      <td>${r.term||"—"}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="viewResult('${r.studentId}','Term 1')">T1</button>
+        <button class="btn btn-ghost btn-sm" onclick="viewResult('${r.studentId}','Term 2')">T2</button>
+        <button class="btn btn-primary btn-sm" onclick="viewResult('${r.studentId}','Final')">Final</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+window.loadResultsFiltered = () => {
+  const classId = document.getElementById("filterResultClass").value;
+  renderResults(classId ? results.filter(r=>r.classId===classId) : results);
+};
+
+window.viewResult = async (studentId, term) => {
+  const win     = window.open("", "_blank");
+  const student = students.find(s=>s.id===studentId);
+  const result  = await getResult(studentId, term);
+  const cls     = classes.find(c=>c.id===result?.classId);
+  if (!student||!result) { win.close(); alert("Result data not found."); return; }
+  const html = buildResultCardHTML(student, result, cls, SCHOOL_CONFIG);
+  win.document.write(html); win.document.close();
+  // Save to backend
+  await apiSaveCard({
+    className:   cls?.name || result.className || "Unknown",
+    studentName: student.name,
+    term:        result.term || term,
+    html
+  });
+  loadSavedCards();
+};
+
+// ── Saved Cards ─────────────────────────────────────────────
+window.switchResultTab = (tab) => {
+  document.getElementById("tab-data").classList.toggle("hidden", tab !== "data");
+  document.getElementById("tab-saved").classList.toggle("hidden", tab !== "saved");
+  document.getElementById("tab-data-btn").className  = tab === "data"  ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm";
+  document.getElementById("tab-saved-btn").className = tab === "saved" ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm";
+  if (tab === "saved") loadSavedCards();
+};
+
+async function loadSavedCards() {
+  const tb = document.getElementById("savedCardsTbody");
+  if (!tb) return;
+  tb.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Loading…</td></tr>`;
+  try {
+    const cards = await apiListCards();
+    if (!cards.length) { tb.innerHTML=`<tr><td colspan="4" class="text-center text-muted">No saved cards yet.</td></tr>`; return; }
+    tb.innerHTML = cards.map(card => `<tr>
+      <td>${card.className}</td>
+      <td>${card.studentName}</td>
+      <td>${card.term}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="viewSavedCard('${card.path}')">View</button>
+        <button class="btn btn-danger btn-sm"  onclick="deleteSavedCard('${card.path}', this)">Delete</button>
+      </td>
+    </tr>`).join("");
+  } catch(e) { tb.innerHTML=`<tr><td colspan="4" class="text-center text-muted">Error loading cards.</td></tr>`; }
+}
+
+window.viewSavedCard = async (path) => {
+  // Fetch the saved HTML and open it
+  const res = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/file?path=${encodeURIComponent(path)}`,
+    {headers:{'Authorization':`Bearer ${sessionStorage.getItem('aps_token')}`}});
+  if (!res.ok) { alert("Could not load saved card."); return; }
+  const html = await res.text();
+  const win = window.open("", "_blank");
+  win.document.write(html); win.document.close();
+};
+
+window.deleteSavedCard = async (path, btn) => {
+  if (!confirm("Delete this saved result card?")) return;
+  btn.disabled = true; btn.textContent = "…";
+  const r = await apiDeleteCard(path);
+  if (r.deleted) loadSavedCards();
+  else { alert("Delete failed."); btn.disabled=false; btn.textContent="Delete"; }
+};
+
+// ── Helpers ──────────────────────────────────────────────────
+function openModal(id)        { document.getElementById(id).classList.remove("hidden"); }
+window.closeModal = (id) =>   { document.getElementById(id).classList.add("hidden"); }
+window.openModal  = openModal;
+
+function showAlert(el, msg, isError=true) {
+  el.textContent = msg;
+  el.className   = `alert ${isError?"alert-error":"alert-success"}`;
+  el.classList.remove("hidden");
+}
+</script>
+</body>
+</html>

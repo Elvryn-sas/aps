@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Teacher — APS Portal</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<style>
+body{visibility:hidden}
+@keyframes fadeSlideIn {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes cardPop {
+  from { opacity:0; transform:scale(0.96) translateY(10px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes navbarSlide {
+  from { opacity:0; transform:translateY(-100%); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.navbar { animation: navbarSlide 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+.main-content { animation: fadeSlideIn 0.6s 0.15s cubic-bezier(0.22,1,0.36,1) both; }
+.card { animation: cardPop 0.5s 0.2s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card { animation: cardPop 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+.stat-card:nth-child(1) { animation-delay:0.18s; }
+.stat-card:nth-child(2) { animation-delay:0.26s; }
+.stat-card:nth-child(3) { animation-delay:0.34s; }
+.modal { animation: cardPop 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.btn { transition: transform 0.15s, box-shadow 0.18s, opacity 0.15s; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(47,122,79,0.2); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.table-wrap { animation: fadeSlideIn 0.5s 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+tbody tr { transition: background 0.15s, transform 0.12s; }
+tbody tr:hover { transform: translateX(2px); }
+section { animation: fadeSlideIn 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+.form-group input:focus, .form-group select:focus {
+  box-shadow: 0 0 0 3px rgba(47,122,79,0.15);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo"><span>APS</span> Teacher Panel</div>
+  <div class="nav-right">
+    <span class="user-name" id="navUser"></span>
+    <span id="navClass" style="opacity:0.7;font-size:0.85rem"></span>
+    <span id="navSubject" style="opacity:0.7;font-size:0.85rem"></span>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-menu">
+      <div class="sidebar-item active" id="nav-myclass" onclick="showSection('myclass')">
+        <span class="icon"></span> My Class
+      </div>
+      <div class="sidebar-item" id="nav-marks" onclick="showSection('marks')">
+        <span class="icon"></span> Enter Marks
+      </div>
+      <div class="sidebar-item" id="nav-results" onclick="showSection('results')">
+        <span class="icon"></span> Result Cards
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- MY CLASS -->
+    <section id="sec-myclass">
+      <div class="page-header"><h2>My Class</h2></div>
+      <div id="classInfoCard" class="card">
+        <p class="text-muted text-center">Loading class info…</p>
+      </div>
+      <div class="card" id="studentsCard">
+        <div class="page-header" style="margin-bottom:12px">
+          <h3 style="color:var(--primary)">Students</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>CID</th><th>Name</th><th>Subject</th><th>Actions</th></tr></thead>
+            <tbody id="myStudentsTbody"><tr><td colspan="4" class="text-center text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENTER MARKS -->
+    <section id="sec-marks" class="hidden">
+      <div class="page-header"><h2>Enter Marks</h2></div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Select Student</label>
+            <select id="markStudent" onchange="loadStudentForm()">
+              <option value="">-- Select Student --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Term</label>
+            <select id="markTerm" onchange="loadStudentForm()">
+              <option value="Term 1">Term 1</option>
+              <option value="Term 2">Term 2</option>
+              <option value="Final">Final</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="marksFormWrap"></div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="sec-results" class="hidden">
+      <div class="page-header"><h2>Result Cards</h2></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>CID</th><th>Name</th><th>Subject</th><th>Term</th><th>%Age</th><th>Actions</th></tr></thead>
+            <tbody id="resultsTbody"><tr><td colspan="6" class="text-center text-muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module">
+import { checkAuth, logout,
+         getClass, getStudentsByClass,
+         saveResult, getResult, getResultsByClass } from "../js/api.js";
+
+async function apiSaveCard(payload) {
+  const res = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/save`, {
+    method:'POST', headers:{'Content-Type':'application/json',
+    'Authorization':`Bearer ${sessionStorage.getItem('aps_token')}`},
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+import { buildResultCardHTML } from "../js/resultCard.js";
+import { SCHOOL_CONFIG } from "../config.js";
+
+const SUBJECTS_BIO      = ["English","Mathematics","Physics","Chemistry","Pakistan Studies","Biology","Urdu","Islamiyat"];
+const SUBJECTS_COMPUTER = ["English","Mathematics","Physics","Chemistry","Pakistan Studies","Computer","Urdu","Islamiyat"];
+
+let currentUser=null, classInfo=null, myStudents=[], myResults=[];
+
+// ── Auth Guard ──────────────────────────────────────────────
+const user = await checkAuth();
+if (!user || user.role !== "teacher") {
+  window.location.href = "../index.html";
+} else {
+  document.body.style.visibility = "visible";
+  currentUser = user;
+  document.getElementById("navUser").textContent = user.name || user.email;
+  document.getElementById("navSubject").textContent = user.subject ? `Subject: ${displaySubjectName(user.subject)}` : "";
+  await initTeacher();
+}
+
+window.doLogout = async () => { await logout(); window.location.href = "../index.html"; };
+
+function displaySubjectName(subject) {
+  if (!subject) return "";
+  return subject === "Bio" ? "Biology" : subject;
+}
+
+function subjectKey(subject) {
+  return subject.toLowerCase().replace(/\s+/g, "_").replace("biology", "bio");
+}
+
+async function initTeacher() {
+  const classId = Array.isArray(currentUser.classIds) && currentUser.classIds.length
+    ? currentUser.classIds[0]
+    : "";
+  if (!classId) {
+    document.getElementById("classInfoCard").innerHTML =
+      `<div class="alert alert-info">No class assigned yet. Contact admin.</div>`;
+    return;
+  }
+  classInfo  = await getClass(classId);
+  myStudents = await getStudentsByClass(classId);
+  myResults  = await getResultsByClass(classId);
+  document.getElementById("navClass").textContent = classInfo?.name||"";
+  renderClassInfo();
+  renderMyStudents();
+  populateStudentSelect();
+  renderMyResults();
+}
+
+function renderClassInfo() {
+  document.getElementById("classInfoCard").innerHTML = `
+    <div class="grid-2">
+      <div><span class="text-muted text-sm">Class</span><br/><strong style="font-size:1.2rem">${classInfo.name}</strong></div>
+      <div><span class="text-muted text-sm">Session</span><br/><strong>${classInfo.session||SCHOOL_CONFIG.school.session}</strong></div>
+      <div><span class="text-muted text-sm">Strength</span><br/><strong>${classInfo.strength||myStudents.length}</strong></div>
+      <div><span class="text-muted text-sm">Students Loaded</span><br/><strong>${myStudents.length}</strong></div>
+    </div>`;
+}
+
+function renderMyStudents() {
+  const tb = document.getElementById("myStudentsTbody");
+  if (!myStudents.length) {
+    tb.innerHTML=`<tr><td colspan="4" class="text-center text-muted">No students in class.</td></tr>`; return;
+  }
+  tb.innerHTML = myStudents.map(s=>`
+    <tr>
+      <td>${s.cid}</td>
+      <td>${s.name}</td>
+      <td><span class="badge badge-${s.subject}">${s.subject==="bio"?"Biology":"Computer"}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="goToMarks('${s.id}')">Enter Marks</button></td>
+    </tr>`).join("");
+}
+
+function populateStudentSelect() {
+  const sel = document.getElementById("markStudent");
+  sel.innerHTML=`<option value="">-- Select Student --</option>`;
+  myStudents.forEach(s=>sel.insertAdjacentHTML("beforeend",
+    `<option value="${s.id}">${s.cid} — ${s.name}</option>`));
+}
+
+window.goToMarks = (studentId) => {
+  showSection("marks");
+  document.getElementById("markStudent").value = studentId;
+  loadStudentForm();
+};
+
+// ── MARKS FORM ───────────────────────────────────────────────
+window.loadStudentForm = async () => {
+  const studentId = document.getElementById("markStudent").value;
+  const term      = document.getElementById("markTerm").value;
+  const wrap      = document.getElementById("marksFormWrap");
+  if (!studentId) { wrap.innerHTML=""; return; }
+
+  const student  = myStudents.find(s => s.id === studentId);
+  const existing = await getResult(studentId, term) || {};
+  const exSubs   = existing.subjects || {};
+  const isT2     = term === "Term 2" || term === "Final";
+  const teacherSubject = currentUser.subject || "";
+  const displaySubject = displaySubjectName(teacherSubject);
+  const key = subjectKey(teacherSubject);
+  const d   = exSubs[key] || {};
+
+  if (!student) {
+    wrap.innerHTML = `<div class="alert alert-error">Selected student not found.</div>`;
+    return;
+  }
+  const expectedSubjects = student.subject === "computer" ? SUBJECTS_COMPUTER : SUBJECTS_BIO;
+  if (!expectedSubjects.includes(displaySubject)) {
+    wrap.innerHTML = `<div class="alert alert-warning">This student is not assigned to your subject group. Check your class assignments.</div>`;
+    return;
+  }
+
+  const t1 = `
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t1_a1"    value="${d.t1_a1   ||""}" min="0" max="20"  placeholder="A1"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t1_a2"    value="${d.t1_a2   ||""}" min="0" max="20"  placeholder="A2"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t1_marks" value="${d.t1_marks||""}" min="0"           placeholder="Exam"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t1_max"   value="${d.t1_max  ||100}" min="0"          placeholder="Max"/></td>`;
+  const t2 = isT2 ? `
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_a1"    value="${d.t2_a1   ||""}" min="0" max="20"  placeholder="A3"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_a2"    value="${d.t2_a2   ||""}" min="0" max="20"  placeholder="A4"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_cw1"   value="${d.t2_cw1  ||""}" min="0" max="10"  placeholder="CW1"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_cw2"   value="${d.t2_cw2  ||""}" min="0" max="10"  placeholder="CW2"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_cw3"   value="${d.t2_cw3  ||""}" min="0" max="10"  placeholder="CW3"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_marks" value="${d.t2_marks||""}" min="0"           placeholder="Exam"/></td>
+      <td><input type="number" class="mark-input" data-key="${key}" data-f="t2_max"   value="${d.t2_max  ||100}" min="0"          placeholder="Max"/></td>` : "";
+
+  wrap.innerHTML = `
+  <style>
+    .mark-input{width:60px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:0.82rem}
+    .mark-input:focus{outline:none;border-color:var(--primary)}
+  </style>
+  <div class="card">
+    <h3 style="color:var(--primary);margin-bottom:4px">${student.name} — ${term}</h3>
+    <p class="text-muted text-sm" style="margin-bottom:14px">Subject: ${displaySubject}</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>T1 A1</th><th>T1 A2</th><th>T1 Exam</th><th>T1 Max</th>
+            ${isT2?"<th>T2 A3</th><th>T2 A4</th><th>CW1</th><th>CW2</th><th>CW3</th><th>T2 Exam</th><th>T2 Max</th>":""}
+          </tr>
+        </thead>
+        <tbody><tr><td><strong>${displaySubject}</strong></td>${t1}${t2}</tr></tbody>
+      </table>
+    </div>
+    <div class="form-row mt-12">
+      <div class="form-group">
+        <label>Teacher Feedback</label>
+        <textarea id="feedbackText" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem">${d.feedback||""}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Feedforward for Improvement</label>
+        <textarea id="feedforwardText" rows="2" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem">${d.feedforward||""}</textarea>
+      </div>
+    </div>
+    <div id="saveAlert" class="hidden"></div>
+    <div class="flex-end mt-12">
+      <button class="btn btn-ghost"    onclick="loadStudentForm()">↺ Reload</button>
+      <button class="btn btn-success"  onclick="saveMarks()">Save Marks</button>
+      <button class="btn btn-primary"  onclick="previewResult()">Preview Card</button>
+    </div>
+  </div>`;
+};
+
+window.saveMarks = async () => {
+  const studentId = document.getElementById("markStudent").value;
+  const term      = document.getElementById("markTerm").value;
+  const student   = myStudents.find(s => s.id === studentId);
+  const alertEl   = document.getElementById("saveAlert");
+  const subject   = currentUser.subject || "";
+  const key       = subjectKey(subject);
+
+  const payload = {};
+  document.querySelectorAll(".mark-input").forEach(inp => {
+    const fld = inp.dataset.f;
+    payload[fld] = parseFloat(inp.value) || 0;
+  });
+
+  const subjects = { [key]: payload };
+  const overallPct = 0;
+  const feedback    = document.getElementById("feedbackText")?.value    || "";
+  const feedforward = document.getElementById("feedforwardText")?.value || "";
+
+  try {
+    const response = await saveResult({
+      studentId, term, subject,
+      studentName: student.name,
+      classId:     classInfo.id,
+      className:   classInfo.name,
+      subjects, feedback, feedforward, overallPct
+    });
+    const pending = response.pendingSubjects || [];
+    alertEl.textContent = pending.length
+      ? `Marks saved. Other subjects still pending: ${pending.join(", ")}. Missing subject marks will remain 0 until submitted.`
+      : "Marks saved. All subject marks have now been submitted.";
+    alertEl.className   = pending.length ? "alert alert-warning" : "alert alert-success";
+    alertEl.classList.remove("hidden");
+    myResults = await getResultsByClass(classInfo.id);
+    renderMyResults();
+    setTimeout(() => alertEl.classList.add("hidden"), 5000);
+  } catch (e) {
+    alertEl.textContent = e.message;
+    alertEl.className   = "alert alert-error";
+    alertEl.classList.remove("hidden");
+  }
+};
+
+window.previewResult = async () => {
+  const win       = window.open("", "_blank");
+  const studentId = document.getElementById("markStudent").value;
+  const term      = document.getElementById("markTerm").value;
+  const student   = myStudents.find(s=>s.id===studentId);
+  const result    = await getResult(studentId, term);
+  if (!result) { win.close(); alert("Save marks first."); return; }
+  const html = buildResultCardHTML(student, result, classInfo, SCHOOL_CONFIG);
+  win.document.write(html); win.document.close();
+  await apiSaveCard({ className: classInfo.name, studentName: student.name, term, html });
+};
+
+// ── RESULTS LIST ─────────────────────────────────────────────
+function renderMyResults() {
+  const tb = document.getElementById("resultsTbody");
+  if (!myResults.length) {
+    tb.innerHTML=`<tr><td colspan="6" class="text-center text-muted">No results yet.</td></tr>`; return;
+  }
+  tb.innerHTML = myResults.map(r=>{
+    const s = myStudents.find(x=>x.id===r.studentId);
+    return `<tr>
+      <td>${s?.cid||"—"}</td>
+      <td>${s?.name||r.studentName}</td>
+      <td><span class="badge badge-${s?.subject}">${s?.subject==="bio"?"Biology":"Computer"}</span></td>
+      <td>${r.term}</td>
+      <td><strong>${r.overallPct||"—"}%</strong></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm"   onclick="viewCard('${r.studentId}','Term 1')">T1</button>
+        <button class="btn btn-ghost btn-sm"   onclick="viewCard('${r.studentId}','Term 2')">T2</button>
+        <button class="btn btn-primary btn-sm" onclick="viewCard('${r.studentId}','Final')">Final</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+window.viewCard = async (studentId, term) => {
+  const win     = window.open("", "_blank");
+  const student = myStudents.find(s=>s.id===studentId);
+  const result  = await getResult(studentId, term);
+  if (!student||!result) { win.close(); alert("Data not found."); return; }
+  const html = buildResultCardHTML(student, result, classInfo, SCHOOL_CONFIG);
+  win.document.write(html); win.document.close();
+  await apiSaveCard({ className: classInfo.name, studentName: student.name, term, html });
+};
+
+// ── NAV ─────────────────────────────────────────────────────
+window.showSection = (name) => {
+  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+  document.querySelectorAll(".sidebar-item").forEach(i=>i.classList.remove("active"));
+  document.getElementById("sec-"+name).classList.remove("hidden");
+  document.getElementById("nav-"+name).classList.add("active");
+};
+</script>
+</body>
+</html>
