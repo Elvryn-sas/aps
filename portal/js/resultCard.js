@@ -11,21 +11,20 @@ function _getSchoolConfig(passed) {
 const SUBJECTS_BIO      = ["English","Urdu","Mathematics","Physics","Chemistry","Bio","Pakistan Studies (History & Geography)","Islamiyat"];
 const SUBJECTS_COMPUTER = ["English","Urdu","Mathematics","Physics","Chemistry","Computer","Pakistan Studies (History & Geography)","Islamiyat"];
 
-// Exam totals verified against school Excel formulas (e.g. Chemistry uses /100 not /120)
 const EXAM_MAX_BIO = {
   "English":100,"Urdu":100,"Mathematics":200,"Physics":100,
-  "Chemistry":100,"Bio":100,"Pakistan Studies (History & Geography)":150,"Islamiyat":100
+  "Chemistry":120,"Bio":100,"Pakistan Studies (History & Geography)":150,"Islamiyat":100
 };
 const EXAM_MAX_COMPUTER = {
   "English":100,"Urdu":100,"Mathematics":200,"Physics":100,
-  "Chemistry":100,"Computer":60,"Pakistan Studies (History & Geography)":150,"Islamiyat":100
+  "Chemistry":120,"Computer":60,"Pakistan Studies (History & Geography)":150,"Islamiyat":100
 };
 
-// T1 Assessment max = 40 (A1/20 + A2/20)
-// T2 Sessional max = 70 for all groups (A3/20 + A4/20 + CW1/10 + CW2/10 + CW3/10)
+// T1 Assessment max = 40 (A1 max20 + A2 max20)
+// T2 Sessional max = 70 for Bio group, 50 for Computer group (A3+A4+CW1 = 20+20+10)
 const T1_ASS_MAX = 40;
 const T2_SES_MAX_BIO      = 70;
-const T2_SES_MAX_COMPUTER = 70;
+const T2_SES_MAX_COMPUTER = 50;
 
 const GRADE_TABLE = [[90,"A+"],[80,"A"],[70,"B"],[60,"C"],[50,"D"],[45,"E"],[0,"U"]];
 function getGrade(pct){ for(const [m,g] of GRADE_TABLE) if(pct>=m) return g; return "U"; }
@@ -202,11 +201,17 @@ export function buildResultCardHTML(student, result, classInfo, schoolConfig) {
   });
 
   const totalPctSum   = +allPcts.reduce((a,b)=>a+b,0).toFixed(2);
-  // Excel formula: overall% = sum(all subject final%) / (n_subjects × 100) × 100
-  const totalWeightageMax = subjects.length * 100; // 800 for 8 subjects
-  const overallAvgPct = totalWeightageMax > 0 ? +(totalPctSum / totalWeightageMax * 100).toFixed(2) : 0;
+  const overallAvgPct = allPcts.length ? +(totalPctSum / allPcts.length).toFixed(2) : 0;
   const overallGrade  = getGrade(overallAvgPct);
   const strength      = classInfo?.strength || "";
+
+  // Summary numbers matching image 3:
+  // "Total Weightage %" = 800 (fixed, 8 subjects × 100)
+  // "Obtained Weightage" = sum of all subject %ages
+  // "Average %age" = totalPctSum / 8
+  // "Total Marks" (Result Summary) = sum of all T.Mks
+  // "Obtained" = sum of all subject obtained marks (raw)
+  const totalWeightageMax = subjects.length * 100; // always 800
 
   return `<!DOCTYPE html>
 <html lang="en">

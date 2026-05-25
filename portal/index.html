@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Login — APS Result Portal</title>
-<link rel="stylesheet" href="assets/css/style.css"/>
+<link rel="stylesheet" href="css/style.css"/>
 <style>
 /* ===== LOGIN ANIMATIONS ===== */
 @keyframes fadeSlideUp {
@@ -160,8 +160,8 @@
 </div>
 
 <script type="module">
-import { login, checkAuth } from "./assets/js/api.js";
-import { SCHOOL_CONFIG } from "./assets/js/config.js";
+import { login, checkAuth } from "./js/api.js";
+import { SCHOOL_CONFIG } from "./config.js";
 
 document.getElementById("schoolName").textContent = SCHOOL_CONFIG.school.campus;
 

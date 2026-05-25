@@ -1,5 +1,4 @@
 // js/api.js — All API calls to your PC backend. Replaces firebase.js + db.js
-import { SCHOOL_CONFIG } from "../config.js";
 
 const BASE = () => SCHOOL_CONFIG.backendUrl;
 
