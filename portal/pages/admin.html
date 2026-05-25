@@ -334,8 +334,40 @@ async function apiListCards() {
   });
   return res.json();
 }
-import { buildResultCardHTML } from "../js/resultCard.js?v=1779630655";
 import { SCHOOL_CONFIG } from "../config.js?v=1779630655";
+
+// ── Backend PDF helper ────────────────────────────────────────────────────
+async function _openPdfCard(student, result, classInfo, term) {
+  const payload = {
+    studentId:   student.id,
+    studentName: student.name,
+    classId:     classInfo?.id || result?.classId || "",
+    className:   classInfo?.name || result?.className || "",
+    strength:    classInfo?.strength || "",
+    term:        term || result?.term || "Final",
+    subject:     student.subject || "bio",
+    subjects:    result.subjects || {}
+  };
+  try {
+    const resp = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/pdf`, {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${sessionStorage.getItem("aps_token")}`
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  } catch (e) {
+    alert("PDF generation failed: " + e.message);
+  }
+}
 
 // ── Auth Guard ──────────────────────────────────────────────
 const user = await checkAuth();
@@ -663,20 +695,11 @@ window.loadResultsFiltered = () => {
 };
 
 window.viewResult = async (studentId, term) => {
-  const win     = window.open("", "_blank");
   const student = students.find(s=>s.id===studentId);
   const result  = await getResult(studentId, term);
   const cls     = classes.find(c=>c.id===result?.classId);
-  if (!student||!result) { win.close(); alert("Result data not found."); return; }
-  const html = buildResultCardHTML(student, result, cls, SCHOOL_CONFIG);
-  win.document.write(html); win.document.close();
-  // Save to backend
-  await apiSaveCard({
-    className:   cls?.name || result.className || "Unknown",
-    studentName: student.name,
-    term:        result.term || term,
-    html
-  });
+  if (!student||!result) { alert("Result data not found."); return; }
+  await _openPdfCard(student, result, cls, term);
   loadSavedCards();
 };
 

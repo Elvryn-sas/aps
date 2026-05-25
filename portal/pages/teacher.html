@@ -141,8 +141,40 @@ async function apiSaveCard(payload) {
   });
   return res.json();
 }
-import { buildResultCardHTML } from "../js/resultCard.js";
 import { SCHOOL_CONFIG } from "../config.js";
+
+// ── Backend PDF helper ────────────────────────────────────────────────────
+async function _openPdfCard(student, result, classInfo, term) {
+  const payload = {
+    studentId:   student.id,
+    studentName: student.name,
+    classId:     classInfo.id,
+    className:   classInfo.name,
+    strength:    classInfo.strength || "",
+    term:        term,
+    subject:     student.subject || "bio",
+    subjects:    result.subjects || {}
+  };
+  try {
+    const resp = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/pdf`, {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${sessionStorage.getItem("aps_token")}`
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  } catch (e) {
+    alert("PDF generation failed: " + e.message);
+  }
+}
 
 const SUBJECTS_BIO      = ["English","Mathematics","Physics","Chemistry","Pakistan Studies","Biology","Urdu","Islamiyat"];
 const SUBJECTS_COMPUTER = ["English","Mathematics","Physics","Chemistry","Pakistan Studies","Computer","Urdu","Islamiyat"];
@@ -350,40 +382,13 @@ window.saveMarks = async () => {
   }
 };
 
-async function openBackendPdf(student, result, term) {
-  const response = await fetch(`${SCHOOL_CONFIG.backendUrl}/api/result-cards/pdf`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${sessionStorage.getItem('aps_token')}`
-    },
-    body: JSON.stringify({
-      student,
-      classInfo,
-      result,
-      term,
-      school: SCHOOL_CONFIG.school || {}
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    alert(error.error || 'Failed to generate PDF.');
-    return;
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-}
-
 window.previewResult = async () => {
   const studentId = document.getElementById("markStudent").value;
   const term      = document.getElementById("markTerm").value;
   const student   = myStudents.find(s=>s.id===studentId);
   const result    = await getResult(studentId, term);
   if (!result) { alert("Save marks first."); return; }
-  await openBackendPdf(student, result, term);
+  await _openPdfCard(student, result, classInfo, term);
 };
 
 // ── RESULTS LIST ─────────────────────────────────────────────
@@ -413,7 +418,7 @@ window.viewCard = async (studentId, term) => {
   const student = myStudents.find(s=>s.id===studentId);
   const result  = await getResult(studentId, term);
   if (!student||!result) { alert("Data not found."); return; }
-  await openBackendPdf(student, result, term);
+  await _openPdfCard(student, result, classInfo, term);
 };
 
 // ── NAV ─────────────────────────────────────────────────────
