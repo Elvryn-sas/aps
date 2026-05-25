@@ -489,7 +489,7 @@ ${blocks.join("\n")}
     <div class="summary-panel">
       <div class="sp-title">Result Summary</div>
       <table class="sp-table">
-        <tr><td class="sp-label">Total Marks</td><td class="sp-value">${totalTMks}</td></tr>
+        <tr><td class="sp-label">Total Marks</td><td class="sp-value">800</td></tr>
         <tr><td class="sp-label">Obtained</td><td class="sp-value">${fmtNum(totalPctSum)}</td></tr>
         <tr><td class="sp-label">%Age</td><td class="sp-value">${fmtNum(overallAvgPct)}%</td></tr>
         <tr><td class="sp-label">Grade</td><td class="sp-value">${overallGrade}</td></tr>
