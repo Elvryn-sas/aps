@@ -482,7 +482,6 @@ ${blocks.join("\n")}
       <div class="sp-title">Weightage Summary</div>
       <table class="sp-table">
         <tr><td class="sp-label">Total Weightage %</td><td class="sp-value">${totalWeightageMax}</td></tr>
-        <tr><td class="sp-label">Obtained Weightage</td><td class="sp-value">${fmtNum(totalPctSum)}</td></tr>
         <tr><td class="sp-label">Average %age</td><td class="sp-value">${fmtNum(overallAvgPct)}</td></tr>
         <tr><td class="sp-label">Grade</td><td class="sp-value">${overallGrade}</td></tr>
       </table>
